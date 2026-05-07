@@ -39,21 +39,25 @@
         .home-tel{background:#fff1f0;color:#b91c1c}
         .home-wa{background:#dcfce7;color:#15803d}
         .home-wechat{background:#e0e7ff;color:#1e3a8a}
+        
+        /* 模态框优化 - 手机友好 */
         .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);align-items:center;justify-content:center;z-index:1000}
-        .modal-content{background:#fff;max-width:600px;width:90%;border-radius:28px;padding:20px;position:relative;max-height:90vh;overflow-y:auto}
-        .close-modal{position:absolute;top:12px;right:18px;font-size:28px;cursor:pointer}
-        .swiper{width:100%;height:300px;border-radius:16px;margin-bottom:16px}
+        .modal-content{background:#fff;max-width:500px;width:90%;border-radius:28px;padding:20px;position:relative;max-height:85vh;overflow-y:auto}
+        .close-modal{position:absolute;top:12px;right:16px;font-size:28px;cursor:pointer;width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.1);z-index:20;color:#333}
+        .close-modal:hover{background:#f0f0f0}
+        .swiper{width:100%;height:280px;border-radius:16px;margin-bottom:16px}
         .swiper-slide img{width:100%;height:100%;object-fit:contain;background:#f1f5f9}
-        .detail-field{margin:12px 0;border-bottom:1px solid #e2e8f0;padding-bottom:6px}
-        .contact-buttons{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
-        .contact-btn{flex:1;text-align:center;padding:10px;border-radius:40px;text-decoration:none;font-size:0.8rem;background:#f1f5f9;color:#1e293b;cursor:pointer;border:none}
+        .detail-field{margin:10px 0;padding-bottom:6px;border-bottom:1px solid #eef2f6;display:flex;justify-content:space-between;flex-wrap:wrap}
+        .detail-field strong{color:#2c3e66}
+        .contact-buttons{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px;padding-top:12px;border-top:1px solid #eef2f6}
+        .contact-btn{flex:1;text-align:center;padding:10px 6px;border-radius:40px;text-decoration:none;font-size:0.8rem;background:#f1f5f9;color:#1e293b;cursor:pointer;border:none;display:flex;align-items:center;justify-content:center;gap:6px}
         .contact-mail{background:#e0f2fe;color:#0369a1}
         .contact-wa{background:#dcfce7;color:#15803d}
         .contact-wechat{background:#e0e7ff;color:#1e3a8a}
         .contact-tel{background:#fff1f0;color:#b91c1c}
         .loading-spinner{text-align:center;padding:50px;color:#5b6e8c}
         .no-results{text-align:center;padding:50px;color:#5b6e8c}
-        @media (max-width:650px){.cars-grid{grid-template-columns:1fr}.swiper{height:220px}}
+        @media (max-width:650px){.cars-grid{grid-template-columns:1fr}.swiper{height:220px}.detail-field{flex-direction:column;gap:4px}}
     </style>
 </head>
 <body>
@@ -77,7 +81,19 @@
         <div class="home-contact-buttons" id="homeContactButtons"></div>
     </div>
 </div>
-<div id="detailModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="swiper" id="detailSwiper"><div class="swiper-wrapper" id="swiperWrapper"></div><div class="swiper-button-next"></div><div class="swiper-button-prev"></div></div><h2 id="modalTitle"></h2><div id="modalDetails"></div><div class="contact-buttons" id="contactButtons"></div></div></div>
+<div id="detailModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <div class="swiper" id="detailSwiper">
+            <div class="swiper-wrapper" id="swiperWrapper"></div>
+            <div class="swiper-button-next"></div>
+            <div class="swiper-button-prev"></div>
+        </div>
+        <h2 id="modalTitle" style="font-size:1.3rem;margin-bottom:12px"></h2>
+        <div id="modalDetails"></div>
+        <div class="contact-buttons" id="contactButtons"></div>
+    </div>
+</div>
 <script>
 const EXCEL_URL = "https://raw.githubusercontent.com/chinacar/Ben/main/cars.xlsx";
 const CONTACT = { email: "shengunju@gmail.com", phone: "+8615589681341", whatsapp: "19059231202", wechat: "AutoChinaExport" };
@@ -91,13 +107,10 @@ let dataLoaded = false;
 
 // ========== 完整翻译词典 ==========
 const dict = {
-    // 品牌
     "日产": { en: "Nissan", fr: "Nissan", ar: "نيسان" },
     "捷达": { en: "Jetta", fr: "Jetta", ar: "جيتا" },
-    // 动力类型
     "柴油": { en: "Diesel", fr: "Diesel", ar: "ديزل" },
     "汽油": { en: "Gasoline", fr: "Essence", ar: "بنزين" },
-    // 型号（完整匹配Excel中的写法）
     "新纳瓦拉": { en: "New Navara", fr: "New Navara", ar: "نيو نافارا" },
     "新纳瓦拉  柴油版": { en: "New Navara Diesel", fr: "New Navara Diesel", ar: "نيو نافارا ديزل" },
     "Z9": { en: "Z9", fr: "Z9", ar: "زد 9" },
@@ -108,64 +121,40 @@ const dict = {
     "全新捷达vS7 280TSI": { en: "New Jetta VS7 280TSI", fr: "New Jetta VS7 280TSI", ar: "جيتا في إس 7 280TSI الجديدة" },
     "全新捷达VS5": { en: "New Jetta VS5", fr: "New Jetta VS5", ar: "جيتا في إس 5 الجديدة" },
     "全新捷达VS5 280TSI": { en: "New Jetta VS5 280TSI", fr: "New Jetta VS5 280TSI", ar: "جيتا في إس 5 280TSI الجديدة" },
-    // 配置类别
     "柴油版": { en: "Diesel", fr: "Diesel", ar: "ديزل" },
     "舒适型": { en: "Comfort", fr: "Confort", ar: "راحة" },
-    "自动波两驱": { en: "2WD Automatic", fr: "2RM Automatique", ar: "دفع خلفي أوتوماتيكي" },
+    "自动波两驱": { en: "2WD Auto", fr: "2RM Auto", ar: "دفع خلفي أوتوماتيكي" },
     "2026款商用版长箱+2000四驱自动波": { en: "2026 Commercial Long Box +2000 4WD Auto", fr: "2026 Commercial Long Box +2000 4RM Auto", ar: "2026 تجاري صندوق طويل +2000 دفع رباعي أوتوماتيكي" },
-    "两驱自动波": { en: "2WD Automatic", fr: "2RM Automatique", ar: "دفع خلفي أوتوماتيكي" },
+    "两驱自动波": { en: "2WD Auto", fr: "2RM Auto", ar: "دفع خلفي أوتوماتيكي" },
     "自动荣耀版": { en: "Glory Auto", fr: "Gloire Auto", ar: "المجد أوتوماتيك" },
     "自动旗舰高光板+备胎": { en: "Flagship High Gloss + Spare Tire", fr: "Flagship High Gloss + Roue de Secours", ar: "الطراز الرائد لامع + إطار احتياطي" },
     "手动先锋2026皮影版-备胎": { en: "Pioneer 2026 Shadow + Spare Tire (MT)", fr: "Pionnier 2026 Ombre + Roue de Secours (MT)", ar: "رائد 2026 ظل + إطار احتياطي (يدوي)" },
     "自动先锋2026皮影版-备胎": { en: "Pioneer 2026 Shadow + Spare Tire (AT)", fr: "Pionnier 2026 Ombre + Roue de Secours (AT)", ar: "رائد 2026 ظل + إطار احتياطي (أوتوماتيك)" },
     "舒适型 自动波两驱": { en: "Comfort 2WD Auto", fr: "Confort 2RM Auto", ar: "راحة دفع خلفي أوتوماتيك" },
-    // 颜色
     "银": { en: "Silver", fr: "Argent", ar: "فضي" },
     "沙漠金": { en: "Desert Gold", fr: "Or du Désert", ar: "ذهبي صحراوي" },
     "灰": { en: "Gray", fr: "Gris", ar: "رمادي" },
     "星河灰": { en: "Starlight Gray", fr: "Gris Étoilé", ar: "رمادي نجمي" },
     "锰石黑": { en: "Manganese Black", fr: "Noir Manganèse", ar: "أسود منجنيز" },
     "极地白": { en: "Polar White", fr: "Blanc Polaire", ar: "أبيض قطبي" },
-    // 额外常用词
     "280TSI": { en: "280TSI", fr: "280TSI", ar: "280TSI" },
     "备胎": { en: "Spare Tire", fr: "Roue de Secours", ar: "إطار احتياطي" },
     "长箱": { en: "Long Box", fr: "Long Box", ar: "صندوق طويل" },
     "四驱": { en: "4WD", fr: "4RM", ar: "دفع رباعي" },
-    "自动波": { en: "Automatic", fr: "Automatique", ar: "أوتوماتيكي" }
+    "自动波": { en: "Auto", fr: "Auto", ar: "أوتوماتيكي" }
 };
 
-// 界面文字翻译
 const uiDict = {
-    en: {
-        brand: "Brand", price: "Price (USD)", mileage: "Mileage (km)", energy: "Powertrain",
-        reset: "Reset", all: "All", noCars: "No vehicles found",
-        email: "Email", phone: "Call", contactUs: "📞 Contact Us",
-        updatePrefix: "Data updated on", color: "Color", exw: "EXW", fob: "FOB",
-        wechat: "WeChat", noImage: "No images", contactPrice: "Contact us"
-    },
-    fr: {
-        brand: "Marque", price: "Prix (USD)", mileage: "Kilométrage", energy: "Motorisation",
-        reset: "Réinitialiser", all: "Tous", noCars: "Aucun véhicule",
-        email: "E-mail", phone: "Appeler", contactUs: "📞 Contactez-nous",
-        updatePrefix: "Mise à jour le", color: "Couleur", exw: "EXW", fob: "FOB",
-        wechat: "WeChat", noImage: "Aucune image", contactPrice: "Nous contacter"
-    },
-    ar: {
-        brand: "العلامة", price: "السعر (دولار)", mileage: "كم", energy: "نظام الدفع",
-        reset: "إعادة تعيين", all: "الكل", noCars: "لا توجد سيارات",
-        email: "البريد", phone: "اتصال", contactUs: "📞 اتصل بنا",
-        updatePrefix: "آخر تحديث", color: "اللون", exw: "EXW", fob: "FOB",
-        wechat: "ويشات", noImage: "لا توجد صور", contactPrice: "اتصل بنا"
-    }
+    en: { brand: "Brand", price: "Price (USD)", mileage: "Mileage (km)", energy: "Powertrain", reset: "Reset", all: "All", noCars: "No vehicles found", email: "Email", phone: "Call", contactUs: "📞 Contact Us", updatePrefix: "Updated", color: "Color", exw: "EXW", fob: "FOB", wechat: "WeChat", noImage: "No images", contactPrice: "Contact us" },
+    fr: { brand: "Marque", price: "Prix (USD)", mileage: "Kilométrage", energy: "Motorisation", reset: "Réinitialiser", all: "Tous", noCars: "Aucun véhicule", email: "E-mail", phone: "Appeler", contactUs: "📞 Contactez-nous", updatePrefix: "Mis à jour", color: "Couleur", exw: "EXW", fob: "FOB", wechat: "WeChat", noImage: "Aucune image", contactPrice: "Nous contacter" },
+    ar: { brand: "العلامة", price: "السعر", mileage: "كم", energy: "نظام الدفع", reset: "إعادة تعيين", all: "الكل", noCars: "لا توجد سيارات", email: "البريد", phone: "اتصال", contactUs: "📞 اتصل بنا", updatePrefix: "آخر تحديث", color: "اللون", exw: "EXW", fob: "FOB", wechat: "ويشات", noImage: "لا توجد صور", contactPrice: "اتصل بنا" }
 };
 
 function translate(word, lang) {
     if (!word || word === "-") return word;
-    // 精确匹配
-    if (dict[word] && dict[word][lang]) return dict[word][lang];
-    // 尝试去掉首尾空格后匹配
     const trimmed = word.trim();
     if (dict[trimmed] && dict[trimmed][lang]) return dict[trimmed][lang];
+    if (dict[word] && dict[word][lang]) return dict[word][lang];
     return word;
 }
 
@@ -311,16 +300,16 @@ function showDetail(id){
     const energyTrans = translate(c.energyCh, currentLang);
     const colorTrans = c.colorCh === "-" ? "-" : translate(c.colorCh, currentLang);
     document.getElementById("modalDetails").innerHTML = `
-        <div class="detail-field"><strong>${ui.color}:</strong> ${colorTrans}</div>
-        <div class="detail-field"><strong>${ui.mileage}:</strong> ${c.km.toLocaleString()} km</div>
-        <div class="detail-field"><strong>${ui.energy}:</strong> ${energyTrans}</div>
-        <div class="detail-field"><strong>${ui.exw}:</strong> ${exwD}</div>
-        <div class="detail-field"><strong>${ui.fob}:</strong> ${fobD}</div>
+        <div class="detail-field"><strong>${ui.color}:</strong> <span>${colorTrans}</span></div>
+        <div class="detail-field"><strong>${ui.mileage}:</strong> <span>${c.km.toLocaleString()} km</span></div>
+        <div class="detail-field"><strong>${ui.energy}:</strong> <span>${energyTrans}</span></div>
+        <div class="detail-field"><strong>${ui.exw}:</strong> <span>${exwD}</span></div>
+        <div class="detail-field"><strong>${ui.fob}:</strong> <span>${fobD}</span></div>
     `;
     const wrapper = document.getElementById("swiperWrapper");
-    wrapper.innerHTML = c.imgs.length ? c.imgs.map(u=>`<div class="swiper-slide"><img src="${u}"></div>`).join('') : `<div class="swiper-slide"><div style="height:300px;display:flex;align-items:center;justify-content:center;">${ui.noImage}</div></div>`;
+    wrapper.innerHTML = c.imgs.length ? c.imgs.map(url=>`<div class="swiper-slide"><img src="${url}" loading="lazy" onerror="this.src='https://placehold.co/600x400?text=Image+Error'"></div>`).join('') : `<div class="swiper-slide"><div style="height:280px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;">${ui.noImage}</div></div>`;
     if(swiperInstance) swiperInstance.destroy(true,true);
-    swiperInstance = new Swiper('#detailSwiper', { navigation: { nextEl:'.swiper-button-next', prevEl:'.swiper-button-prev' }, loop: c.imgs.length>1 });
+    swiperInstance = new Swiper('#detailSwiper', { navigation: { nextEl:'.swiper-button-next', prevEl:'.swiper-button-prev' }, loop: c.imgs.length>1, spaceBetween: 10 });
     document.getElementById("contactButtons").innerHTML = `
         <a href="mailto:${CONTACT.email}" class="contact-btn contact-mail"><i class="fas fa-envelope"></i> ${ui.email}</a>
         <a href="tel:${CONTACT.phone}" class="contact-btn contact-tel"><i class="fas fa-phone-alt"></i> ${ui.phone}</a>
