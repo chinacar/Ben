@@ -40,24 +40,40 @@
         .home-wa{background:#dcfce7;color:#15803d}
         .home-wechat{background:#e0e7ff;color:#1e3a8a}
         
-        /* 模态框优化 - 手机友好 */
+        /* 模态框优化 */
         .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);align-items:center;justify-content:center;z-index:1000}
         .modal-content{background:#fff;max-width:500px;width:90%;border-radius:28px;padding:20px;position:relative;max-height:85vh;overflow-y:auto}
-        .close-modal{position:absolute;top:12px;right:16px;font-size:28px;cursor:pointer;width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.1);z-index:20;color:#333}
+        .close-modal{position:sticky;top:0;float:right;margin-top:-10px;margin-right:-10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.15);cursor:pointer;z-index:30;font-size:24px;color:#333;border:1px solid #eee}
         .close-modal:hover{background:#f0f0f0}
-        .swiper{width:100%;height:280px;border-radius:16px;margin-bottom:16px}
-        .swiper-slide img{width:100%;height:100%;object-fit:contain;background:#f1f5f9}
+        
+        /* 图片轮播铺满 */
+        .swiper{width:100%;height:auto;aspect-ratio:16/9;border-radius:16px;margin-top:0;margin-bottom:16px;background:#f1f5f9}
+        .swiper-slide img{width:100%;height:100%;object-fit:cover}
+        .swiper-button-next,.swiper-button-prev{color:#fff;background:rgba(0,0,0,0.5);width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+        .swiper-button-next:after,.swiper-button-prev:after{font-size:14px}
+        
         .detail-field{margin:10px 0;padding-bottom:6px;border-bottom:1px solid #eef2f6;display:flex;justify-content:space-between;flex-wrap:wrap}
         .detail-field strong{color:#2c3e66}
-        .contact-buttons{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px;padding-top:12px;border-top:1px solid #eef2f6}
-        .contact-btn{flex:1;text-align:center;padding:10px 6px;border-radius:40px;text-decoration:none;font-size:0.8rem;background:#f1f5f9;color:#1e293b;cursor:pointer;border:none;display:flex;align-items:center;justify-content:center;gap:6px}
+        
+        /* 联系按钮区域 */
+        .contact-buttons{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px;padding-top:12px;border-top:1px solid #eef2f6}
+        .contact-btn{flex:1;min-width:70px;text-align:center;padding:8px 4px;border-radius:40px;text-decoration:none;font-size:0.75rem;background:#f1f5f9;color:#1e293b;cursor:pointer;border:none;display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}
         .contact-mail{background:#e0f2fe;color:#0369a1}
         .contact-wa{background:#dcfce7;color:#15803d}
         .contact-wechat{background:#e0e7ff;color:#1e3a8a}
         .contact-tel{background:#fff1f0;color:#b91c1c}
+        .wechat-row{margin-top:8px}
+        .wechat-row .contact-btn{background:#e0e7ff;color:#1e3a8a;width:100%;flex:none}
+        
+        /* 马赛克信息区域 */
+        .info-blur{background:#f0f0f0;border-radius:16px;padding:16px;margin:16px 0;text-align:center;position:relative;overflow:hidden}
+        .info-blur::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:repeating-linear-gradient(45deg, #ccc, #ccc 10px, #999 10px, #999 20px);opacity:0.5;z-index:1}
+        .info-blur p{position:relative;z-index:2;background:#fff8e0;padding:12px;border-radius:12px;margin:0;font-weight:500;color:#d4a000;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+        
+        @media (max-width: 480px){.contact-btn{font-size:0.7rem;padding:6px 2px}.contact-btn i{font-size:0.8rem}}
         .loading-spinner{text-align:center;padding:50px;color:#5b6e8c}
         .no-results{text-align:center;padding:50px;color:#5b6e8c}
-        @media (max-width:650px){.cars-grid{grid-template-columns:1fr}.swiper{height:220px}.detail-field{flex-direction:column;gap:4px}}
+        @media (max-width:650px){.cars-grid{grid-template-columns:1fr}.detail-field{flex-direction:column;gap:4px}}
     </style>
 </head>
 <body>
@@ -89,9 +105,16 @@
             <div class="swiper-button-next"></div>
             <div class="swiper-button-prev"></div>
         </div>
-        <h2 id="modalTitle" style="font-size:1.3rem;margin-bottom:12px"></h2>
+        <h2 id="modalTitle" style="font-size:1.2rem;margin-bottom:10px"></h2>
         <div id="modalDetails"></div>
+        
+        <!-- 马赛克区域 -->
+        <div class="info-blur" id="infoBlur">
+            <p id="blurMessage">📩 Message me for more info</p>
+        </div>
+        
         <div class="contact-buttons" id="contactButtons"></div>
+        <div class="wechat-row" id="wechatRow"></div>
     </div>
 </div>
 <script>
@@ -105,7 +128,6 @@ let currentFilter = { brand: "all", priceRange: "all", mileageRange: "all", ener
 let swiperInstance = null;
 let dataLoaded = false;
 
-// ========== 完整翻译词典 ==========
 const dict = {
     "日产": { en: "Nissan", fr: "Nissan", ar: "نيسان" },
     "捷达": { en: "Jetta", fr: "Jetta", ar: "جيتا" },
@@ -145,9 +167,9 @@ const dict = {
 };
 
 const uiDict = {
-    en: { brand: "Brand", price: "Price (USD)", mileage: "Mileage (km)", energy: "Powertrain", reset: "Reset", all: "All", noCars: "No vehicles found", email: "Email", phone: "Call", contactUs: "📞 Contact Us", updatePrefix: "Updated", color: "Color", exw: "EXW", fob: "FOB", wechat: "WeChat", noImage: "No images", contactPrice: "Contact us" },
-    fr: { brand: "Marque", price: "Prix (USD)", mileage: "Kilométrage", energy: "Motorisation", reset: "Réinitialiser", all: "Tous", noCars: "Aucun véhicule", email: "E-mail", phone: "Appeler", contactUs: "📞 Contactez-nous", updatePrefix: "Mis à jour", color: "Couleur", exw: "EXW", fob: "FOB", wechat: "WeChat", noImage: "Aucune image", contactPrice: "Nous contacter" },
-    ar: { brand: "العلامة", price: "السعر", mileage: "كم", energy: "نظام الدفع", reset: "إعادة تعيين", all: "الكل", noCars: "لا توجد سيارات", email: "البريد", phone: "اتصال", contactUs: "📞 اتصل بنا", updatePrefix: "آخر تحديث", color: "اللون", exw: "EXW", fob: "FOB", wechat: "ويشات", noImage: "لا توجد صور", contactPrice: "اتصل بنا" }
+    en: { brand: "Brand", price: "Price (USD)", mileage: "Mileage (km)", energy: "Powertrain", reset: "Reset", all: "All", noCars: "No vehicles found", email: "Email", phone: "Call", contactUs: "📞 Contact Us", updatePrefix: "Updated", color: "Color", exw: "EXW", fob: "FOB", wechat: "WeChat", noImage: "No images", contactPrice: "Contact us", msgText: "📩 Message me for more info" },
+    fr: { brand: "Marque", price: "Prix (USD)", mileage: "Kilométrage", energy: "Motorisation", reset: "Réinitialiser", all: "Tous", noCars: "Aucun véhicule", email: "E-mail", phone: "Appeler", contactUs: "📞 Contactez-nous", updatePrefix: "Mis à jour", color: "Couleur", exw: "EXW", fob: "FOB", wechat: "WeChat", noImage: "Aucune image", contactPrice: "Nous contacter", msgText: "📩 Contactez-moi pour plus d'infos" },
+    ar: { brand: "العلامة", price: "السعر", mileage: "كم", energy: "نظام الدفع", reset: "إعادة تعيين", all: "الكل", noCars: "لا توجد سيارات", email: "البريد", phone: "اتصال", contactUs: "📞 اتصل بنا", updatePrefix: "آخر تحديث", color: "اللون", exw: "EXW", fob: "FOB", wechat: "ويشات", noImage: "لا توجد صور", contactPrice: "اتصل بنا", msgText: "📩 راسلني للمزيد من المعلومات" }
 };
 
 function translate(word, lang) {
@@ -306,15 +328,26 @@ function showDetail(id){
         <div class="detail-field"><strong>${ui.exw}:</strong> <span>${exwD}</span></div>
         <div class="detail-field"><strong>${ui.fob}:</strong> <span>${fobD}</span></div>
     `;
+    
+    document.getElementById("blurMessage").innerHTML = ui.msgText;
+    
     const wrapper = document.getElementById("swiperWrapper");
-    wrapper.innerHTML = c.imgs.length ? c.imgs.map(url=>`<div class="swiper-slide"><img src="${url}" loading="lazy" onerror="this.src='https://placehold.co/600x400?text=Image+Error'"></div>`).join('') : `<div class="swiper-slide"><div style="height:280px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;">${ui.noImage}</div></div>`;
+    wrapper.innerHTML = c.imgs.length ? c.imgs.map(url=>`<div class="swiper-slide"><img src="${url}" loading="lazy" onerror="this.src='https://placehold.co/600x400?text=Image+Error'"></div>`).join('') : `<div class="swiper-slide"><div style="height:100%;display:flex;align-items:center;justify-content:center;background:#f1f5f9;">${ui.noImage}</div></div>`;
     if(swiperInstance) swiperInstance.destroy(true,true);
-    swiperInstance = new Swiper('#detailSwiper', { navigation: { nextEl:'.swiper-button-next', prevEl:'.swiper-button-prev' }, loop: c.imgs.length>1, spaceBetween: 10 });
+    swiperInstance = new Swiper('#detailSwiper', { 
+        navigation: { nextEl:'.swiper-button-next', prevEl:'.swiper-button-prev' }, 
+        loop: c.imgs.length > 1, 
+        spaceBetween: 0,
+        slidesPerView: 1
+    });
+    
     document.getElementById("contactButtons").innerHTML = `
         <a href="mailto:${CONTACT.email}" class="contact-btn contact-mail"><i class="fas fa-envelope"></i> ${ui.email}</a>
         <a href="tel:${CONTACT.phone}" class="contact-btn contact-tel"><i class="fas fa-phone-alt"></i> ${ui.phone}</a>
         <a href="https://wa.me/${CONTACT.whatsapp}" target="_blank" class="contact-btn contact-wa"><i class="fab fa-whatsapp"></i> WhatsApp</a>
-        <button class="contact-btn contact-wechat" id="wcCopy"><i class="fab fa-weixin"></i> ${ui.wechat}: ${CONTACT.wechat}</button>
+    `;
+    document.getElementById("wechatRow").innerHTML = `
+        <button class="contact-btn contact-wechat" id="wcCopy" style="width:100%"><i class="fab fa-weixin"></i> ${ui.wechat}: ${CONTACT.wechat}</button>
     `;
     document.getElementById("wcCopy")?.addEventListener('click',()=>{ navigator.clipboard.writeText(CONTACT.wechat); alert(`${ui.wechat}: ${CONTACT.wechat} copied`); });
     document.getElementById("detailModal").style.display = "flex";
