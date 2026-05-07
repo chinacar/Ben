@@ -59,21 +59,22 @@
 <body>
 <div class="container">
     <div class="lang-bar">
+        <button class="lang-btn" data-lang="zh">🇨🇳 中文</button>
         <button class="lang-btn" data-lang="en">🇬🇧 English</button>
         <button class="lang-btn" data-lang="fr">🇫🇷 Français</button>
         <button class="lang-btn" data-lang="ar">🇸🇦 العربية</button>
     </div>
     <div class="filter-section">
-        <div class="filter-group"><label id="label-brand">Brand</label><select id="filterBrand"></select></div>
-        <div class="filter-group"><label id="label-price">Price (USD)</label><select id="filterPrice"><option value="all">All</option><option value="0-10000">$0-$10k</option><option value="10000-20000">$10k-$20k</option><option value="20000-35000">$20k-$35k</option><option value="35000-50000">$35k-$50k</option><option value="50000-9999999">$50k+</option></select></div>
-        <div class="filter-group"><label id="label-mileage">Mileage</label><select id="filterMileage"><option value="all">All</option><option value="0-10000">0-10k km</option><option value="10000-30000">10k-30k km</option><option value="30000-60000">30k-60k km</option><option value="60000-999999">60k+ km</option></select></div>
-        <div class="filter-group"><label id="label-energy">Powertrain</label><select id="filterEnergy"></select></div>
-        <div><button class="reset-btn" id="resetFilters">⟳ Reset</button></div>
+        <div class="filter-group"><label id="label-brand">品牌</label><select id="filterBrand"></select></div>
+        <div class="filter-group"><label id="label-price">价格 (CNY)</label><select id="filterPrice"><option value="all">全部</option><option value="0-50000">0-5万</option><option value="50000-100000">5万-10万</option><option value="100000-200000">10万-20万</option><option value="200000-500000">20万-50万</option><option value="500000-9999999">50万+</option></select></div>
+        <div class="filter-group"><label id="label-mileage">公里数</label><select id="filterMileage"><option value="all">全部</option><option value="0-10000">0-1万km</option><option value="10000-30000">1万-3万km</option><option value="30000-60000">3万-6万km</option><option value="60000-999999">6万+ km</option></select></div>
+        <div class="filter-group"><label id="label-energy">动力类型</label><select id="filterEnergy"></select></div>
+        <div><button class="reset-btn" id="resetFilters">⟳ 重置</button></div>
     </div>
     <div class="update-date" id="updateDate"></div>
-    <div id="carsGrid" class="cars-grid"><div class="loading-spinner"><i class="fas fa-spinner fa-pulse"></i> <span id="loadingText">Loading vehicles...</span></div></div>
+    <div id="carsGrid" class="cars-grid"><div class="loading-spinner"><i class="fas fa-spinner fa-pulse"></i> 加载车源中...</div></div>
     <div class="home-contact" id="homeContact">
-        <div class="home-contact-title" id="contactTitle">📞 Contact Us</div>
+        <div class="home-contact-title" id="contactTitle">📞 联系我们</div>
         <div class="home-contact-buttons" id="homeContactButtons"></div>
     </div>
 </div>
@@ -81,9 +82,9 @@
 <script>
 const EXCEL_URL = "https://raw.githubusercontent.com/chinacar/Ben/main/cars.xlsx";
 const CONTACT = { email: "shengunju@gmail.com", phone: "+8615589681341", whatsapp: "19059231202", wechat: "AutoChinaExport" };
-const CNY_RATE = 6.75; // 固定汇率 1 EUR = 6.75 CNY
+const CNY_RATE = 6.75;
 
-let currentLang = "en";
+let currentLang = "zh";
 let allCars = [];
 let currentFilter = { brand: "all", priceRange: "all", mileageRange: "all", energyType: "all" };
 let swiperInstance = null;
@@ -91,12 +92,14 @@ let dataLoaded = false;
 
 let translationCache = {};
 
+// 获取昨天日期（根据语言）
 function getYesterdayDate(lang) {
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
     const day = yesterday.getDate();
     const year = yesterday.getFullYear();
+    
     if (lang === 'en') {
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         return `${monthNames[yesterday.getMonth()]} ${day}, ${year}`;
@@ -106,16 +109,18 @@ function getYesterdayDate(lang) {
     } else if (lang === 'ar') {
         const monthNames = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
         return `${day} ${monthNames[yesterday.getMonth()]} ${year}`;
+    } else {
+        return `${year}年${yesterday.getMonth()+1}月${day}日`;
     }
-    return `${month}/${day}/${year}`;
 }
 
 async function translateText(text, targetLang) {
     if (!text || text === "-") return text;
+    if (targetLang === "zh") return text;
     const cacheKey = `${text}_${targetLang}`;
     if (translationCache[cacheKey]) return translationCache[cacheKey];
     try {
-        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
         const response = await fetch(url);
         const data = await response.json();
         const translated = data[0][0][0];
@@ -127,7 +132,8 @@ async function translateText(text, targetLang) {
     }
 }
 
-async function batchTranslate(items, targetLang) {
+async function translateBatch(items, targetLang) {
+    if (targetLang === "zh") return items.reduce((obj, item) => { obj[item] = item; return obj; }, {});
     const results = {};
     const promises = items.map(async (item) => {
         if (!item || item === "-") { results[item] = item; return; }
@@ -156,7 +162,6 @@ async function loadData() {
             const imgs = [];
             for(let j=1;j<=10;j++){ let u = get(`图片${j}`); if(u.startsWith("http")) imgs.push(u); }
             let exw = get("EXW"), fob = get("FOB");
-            // 使用固定汇率 CNY_RATE 转换
             let exwCNY = exw && !isNaN(parseFloat(exw)) ? Math.round(parseFloat(exw) * CNY_RATE) : null;
             let fobCNY = fob && !isNaN(parseFloat(fob)) ? Math.round(parseFloat(fob) * CNY_RATE) : null;
             allCars.push({
@@ -165,133 +170,58 @@ async function loadData() {
             });
         }
         if(!allCars.length) throw new Error("无有效车辆");
-        
-        const allBrands = [...new Set(allCars.map(c => c.brandCh))];
-        const allEnergies = [...new Set(allCars.map(c => c.energyCh))];
-        const allColors = [...new Set(allCars.map(c => c.colorCh).filter(c => c !== "-"))];
-        const allModels = [...new Set(allCars.map(c => c.model).filter(m => m && m.trim()))];
-        const allConfigs = [...new Set(allCars.map(c => c.config).filter(c => c && c.trim()))];
-        const fixedEnergies = ["汽油", "柴油", "电动", "混动"];
-        
-        for (let lang of ['en', 'fr', 'ar']) {
-            translationCache[`brands_${lang}`] = await batchTranslate(allBrands, lang);
-            translationCache[`energies_${lang}`] = await batchTranslate(allEnergies, lang);
-            translationCache[`colors_${lang}`] = await batchTranslate(allColors, lang);
-            translationCache[`fixedEnergies_${lang}`] = await batchTranslate(fixedEnergies, lang);
-            if (allModels.length) translationCache[`models_${lang}`] = await batchTranslate(allModels, lang);
-            if (allConfigs.length) translationCache[`configs_${lang}`] = await batchTranslate(allConfigs, lang);
-            translationCache[`title_${lang}`] = await translateText("AutoChina Export", lang);
-            translationCache[`loading_${lang}`] = await translateText("Loading vehicles...", lang);
-        }
-        
         dataLoaded = true;
-        refreshUI();
+        renderUI_ZH();
     } catch(e) { 
         document.getElementById("carsGrid").innerHTML = `<div class="no-results">⚠️ 加载失败: ${e.message}</div>`; 
     }
 }
 
-function getTrans(category, ch, lang) {
-    if (!ch) return "";
-    const cache = translationCache[`${category}_${lang}`];
-    if (cache && cache[ch] !== undefined) return cache[ch];
-    return ch;
-}
-
-function tBrand(ch) { return getTrans('brands', ch, currentLang); }
-function tEnergy(ch) { return getTrans('energies', ch, currentLang); }
-function tColor(ch) { 
-    if (!ch || ch === "-") return ch;
-    return getTrans('colors', ch, currentLang);
-}
-function tFixedEnergy(ch) { return getTrans('fixedEnergies', ch, currentLang); }
-function tModel(ch) { return getTrans('models', ch, currentLang); }
-function tConfig(ch) { return getTrans('configs', ch, currentLang); }
-function tLoading() { return translationCache[`loading_${currentLang}`] || "Loading vehicles..."; }
-
-const uiText = {
-    en: { brand:"Brand", price:"Price (CNY)", mileage:"Mileage (km)", energy:"Powertrain", reset:"Reset", noCars:"No vehicles found.", all:"All", email:"Email", phone:"Call", wa:"WhatsApp", wc:"WeChat", color:"Color", exw:"EXW", fob:"FOB", contactUs:"📞 Contact Us", updatePrefix:"Data updated on" },
-    fr: { brand:"Marque", price:"Prix (CNY)", mileage:"Kilométrage", energy:"Motorisation", reset:"Réinitialiser", noCars:"Aucun véhicule", all:"Tous", email:"E-mail", phone:"Appeler", wa:"WhatsApp", wc:"WeChat", color:"Couleur", exw:"EXW", fob:"FOB", contactUs:"📞 Contactez-nous", updatePrefix:"Données mises à jour le" },
-    ar: { brand:"العلامة", price:"السعر (يوان)", mileage:"كم", energy:"نظام الدفع", reset:"إعادة تعيين", noCars:"لا توجد سيارات", all:"الكل", email:"بريد", phone:"اتصال", wa:"واتساب", wc:"ويشات", color:"اللون", exw:"EXW", fob:"FOB", contactUs:"📞 اتصل بنا", updatePrefix:"تم تحديث البيانات في" }
-};
-
-function updateLoadingText() {
-    const loadingSpan = document.getElementById("loadingText");
-    if (loadingSpan) {
-        loadingSpan.innerText = tLoading();
-    }
-}
-
-function updateEnergySelect() {
-    const t = uiText[currentLang];
-    const energySelect = document.getElementById("filterEnergy");
-    const energyOptions = [
-        { value: "all", text: t.all },
-        { value: "汽油", text: tFixedEnergy("汽油") },
-        { value: "柴油", text: tFixedEnergy("柴油") },
-        { value: "电动", text: tFixedEnergy("电动") },
-        { value: "混动", text: tFixedEnergy("混动") }
-    ];
-    let html = '';
-    for (let opt of energyOptions) {
-        html += `<option value="${opt.value}">${opt.text}</option>`;
-    }
-    energySelect.innerHTML = html;
-    if (currentFilter.energyType !== "all") energySelect.value = currentFilter.energyType;
-}
-
-function updateHomeContact() {
-    const t = uiText[currentLang];
-    document.getElementById("contactTitle").innerText = t.contactUs;
-    document.getElementById("homeContactButtons").innerHTML = `
-        <a href="mailto:${CONTACT.email}" class="home-contact-btn home-mail"><i class="fas fa-envelope"></i> ${t.email}</a>
-        <a href="tel:${CONTACT.phone}" class="home-contact-btn home-tel"><i class="fas fa-phone-alt"></i> ${t.phone}</a>
-        <a href="https://wa.me/${CONTACT.whatsapp}" target="_blank" class="home-contact-btn home-wa"><i class="fab fa-whatsapp"></i> ${t.wa}</a>
-        <button class="home-contact-btn home-wechat" id="homeWechatBtn"><i class="fab fa-weixin"></i> ${t.wc}: ${CONTACT.wechat}</button>
-    `;
-    document.getElementById("homeWechatBtn")?.addEventListener('click', () => {
-        navigator.clipboard.writeText(CONTACT.wechat);
-        alert(`${t.wc}: ${CONTACT.wechat} copied`);
-    });
-}
-
-function updateDateDisplay() {
-    const t = uiText[currentLang];
-    const dateStr = getYesterdayDate(currentLang);
-    document.getElementById("updateDate").innerText = `${t.updatePrefix} ${dateStr}`;
-}
-
-function refreshUI() {
-    if (!dataLoaded) return;
-    const t = uiText[currentLang];
-    document.title = translationCache[`title_${currentLang}`] || "AutoChina Export";
-    
+function renderUI_ZH() {
+    const t = {
+        brand:"品牌", price:"价格 (CNY)", mileage:"公里数", energy:"动力类型", reset:"重置",
+        noCars:"没有找到符合条件的车辆", all:"全部", email:"邮箱", phone:"电话", contactUs:"📞 联系我们",
+        updatePrefix:"数据更新于", color:"颜色", exw:"EXW", fob:"FOB", wechat:"微信", noImage:"暂无图片"
+    };
+    document.title = "AutoChina Export";
     document.getElementById("label-brand").innerText = t.brand;
     document.getElementById("label-price").innerText = t.price;
     document.getElementById("label-mileage").innerText = t.mileage;
     document.getElementById("label-energy").innerText = t.energy;
     document.getElementById("resetFilters").innerText = t.reset;
-    
     document.getElementById("filterPrice").options[0].text = t.all;
     document.getElementById("filterMileage").options[0].text = t.all;
     
-    updateEnergySelect();
+    const energySelect = document.getElementById("filterEnergy");
+    energySelect.innerHTML = `<option value="all">${t.all}</option>
+        <option value="汽油">汽油</option><option value="柴油">柴油</option>
+        <option value="电动">电动</option><option value="混动">混动</option>`;
+    if (currentFilter.energyType !== "all") energySelect.value = currentFilter.energyType;
     
     const brands = [...new Set(allCars.map(c => c.brandCh))];
     const brandSelect = document.getElementById("filterBrand");
     let opts = `<option value="all">${t.all}</option>`;
-    brands.forEach(b => {
-        opts += `<option value="${b}">${tBrand(b)}</option>`;
-    });
+    brands.forEach(b => { opts += `<option value="${b}">${b}</option>`; });
     brandSelect.innerHTML = opts;
     if (currentFilter.brand !== "all") brandSelect.value = currentFilter.brand;
     
-    updateHomeContact();
-    updateDateDisplay();
-    renderCars();
+    document.getElementById("contactTitle").innerText = t.contactUs;
+    document.getElementById("homeContactButtons").innerHTML = `
+        <a href="mailto:${CONTACT.email}" class="home-contact-btn home-mail"><i class="fas fa-envelope"></i> ${t.email}</a>
+        <a href="tel:${CONTACT.phone}" class="home-contact-btn home-tel"><i class="fas fa-phone-alt"></i> ${t.phone}</a>
+        <a href="https://wa.me/${CONTACT.whatsapp}" target="_blank" class="home-contact-btn home-wa"><i class="fab fa-whatsapp"></i> WhatsApp</a>
+        <button class="home-contact-btn home-wechat" id="homeWechatBtn"><i class="fab fa-weixin"></i> ${t.wechat}: ${CONTACT.wechat}</button>
+    `;
+    document.getElementById("homeWechatBtn")?.addEventListener('click', () => {
+        navigator.clipboard.writeText(CONTACT.wechat);
+        alert(`${t.wechat}: ${CONTACT.wechat} 已复制`);
+    });
+    
+    document.getElementById("updateDate").innerText = `${t.updatePrefix} ${getYesterdayDate("zh")}`;
+    renderCars_ZH();
 }
 
-function renderCars() {
+function renderCars_ZH() {
     let filtered = allCars.filter(c=>{
         if(currentFilter.brand!=="all" && c.brandCh!==currentFilter.brand) return false;
         let price = (c.exwCNY!==null?c.exwCNY:(c.fobCNY!==null?c.fobCNY:0));
@@ -301,62 +231,203 @@ function renderCars() {
         return true;
     });
     const grid = document.getElementById("carsGrid");
-    if(!filtered.length){ 
-        grid.innerHTML = `<div class="no-results">${uiText[currentLang].noCars}</div>`; 
-        return; 
-    }
+    if(!filtered.length){ grid.innerHTML = `<div class="no-results">没有找到符合条件的车辆</div>`; return; }
     grid.innerHTML = filtered.map(c=>{
-        let price = c.exwCNY!==null ? `${c.exwCNY.toLocaleString()} ¥` : (c.fobCNY!==null ? `${c.fobCNY.toLocaleString()} ¥` : "Contact us");
-        const brandTrans = tBrand(c.brandCh);
-        const modelTrans = tModel(c.model);
-        const configTrans = tConfig(c.config);
+        let price = c.exwCNY!==null ? `${c.exwCNY.toLocaleString()} ¥` : (c.fobCNY!==null ? `${c.fobCNY.toLocaleString()} ¥` : "联系询价");
+        return `<div class="car-card" data-id="${c.id}">
+            <div class="car-image-area">${c.imgs[0]?`<img src="${c.imgs[0]}" onerror="this.parentElement.innerHTML='<i class=\'fas fa-car\'></i>'">`:'<i class="fas fa-car"></i>'}</div>
+            <div class="car-info">
+                <div class="car-title">${c.brandCh} ${c.model} ${c.config}</div>
+                <div><span class="badge">${c.energyCh}</span> <span>${c.km.toLocaleString()} km</span></div>
+                <div class="car-price">💰 ${price}</div>
+                <div>🎨 ${c.colorCh === "-" ? "-" : c.colorCh}</div>
+            </div>
+        </div>`;
+    }).join('');
+    document.querySelectorAll('.car-card').forEach(card=>card.addEventListener('click',()=>showDetail_ZH(parseInt(card.dataset.id))));
+}
+
+function showDetail_ZH(id){
+    let c = allCars.find(x=>x.id===id);
+    if(!c) return;
+    document.getElementById("modalTitle").innerHTML = `${c.brandCh} ${c.model} ${c.config}`;
+    let exwD = c.exwCNY!==null ? `${c.exwCNY.toLocaleString()} ¥` : "-";
+    let fobD = c.fobCNY!==null ? `${c.fobCNY.toLocaleString()} ¥` : "-";
+    document.getElementById("modalDetails").innerHTML = `
+        <div class="detail-field"><strong>颜色:</strong> ${c.colorCh === "-" ? "-" : c.colorCh}</div>
+        <div class="detail-field"><strong>公里数:</strong> ${c.km.toLocaleString()} km</div>
+        <div class="detail-field"><strong>动力类型:</strong> ${c.energyCh}</div>
+        <div class="detail-field"><strong>EXW:</strong> ${exwD}</div>
+        <div class="detail-field"><strong>FOB:</strong> ${fobD}</div>
+    `;
+    const wrapper = document.getElementById("swiperWrapper");
+    wrapper.innerHTML = c.imgs.length ? c.imgs.map(u=>`<div class="swiper-slide"><img src="${u}"></div>`).join('') : `<div class="swiper-slide"><div style="height:300px;display:flex;align-items:center;justify-content:center;">暂无图片</div></div>`;
+    if(swiperInstance) swiperInstance.destroy(true,true);
+    swiperInstance = new Swiper('#detailSwiper', { navigation: { nextEl:'.swiper-button-next', prevEl:'.swiper-button-prev' }, loop: c.imgs.length>1 });
+    document.getElementById("contactButtons").innerHTML = `
+        <a href="mailto:${CONTACT.email}" class="contact-btn contact-mail"><i class="fas fa-envelope"></i> 邮箱</a>
+        <a href="tel:${CONTACT.phone}" class="contact-btn contact-tel"><i class="fas fa-phone-alt"></i> 电话</a>
+        <a href="https://wa.me/${CONTACT.whatsapp}" target="_blank" class="contact-btn contact-wa"><i class="fab fa-whatsapp"></i> WhatsApp</a>
+        <button class="contact-btn contact-wechat" id="wcCopy"><i class="fab fa-weixin"></i> 微信: ${CONTACT.wechat}</button>
+    `;
+    document.getElementById("wcCopy")?.addEventListener('click',()=>{ navigator.clipboard.writeText(CONTACT.wechat); alert(`微信: ${CONTACT.wechat} 已复制`); });
+    document.getElementById("detailModal").style.display = "flex";
+}
+
+async function translateToLang(targetLang) {
+    const cacheKey = `full_${targetLang}`;
+    if (translationCache[cacheKey]) {
+        applyTranslatedUI(targetLang, translationCache[cacheKey]);
+        return;
+    }
+    const grid = document.getElementById("carsGrid");
+    const originalHTML = grid.innerHTML;
+    grid.innerHTML = `<div class="loading-spinner"><i class="fas fa-spinner fa-pulse"></i> 翻译中...</div>`;
+    try {
+        const allBrands = [...new Set(allCars.map(c => c.brandCh))];
+        const allEnergies = [...new Set(allCars.map(c => c.energyCh))];
+        const allColors = [...new Set(allCars.map(c => c.colorCh).filter(c => c !== "-"))];
+        const allModels = [...new Set(allCars.map(c => c.model).filter(m => m && m.trim()))];
+        const allConfigs = [...new Set(allCars.map(c => c.config).filter(c => c && c.trim()))];
+        const fixedEnergies = ["汽油", "柴油", "电动", "混动"];
+        
+        const [brandsMap, energiesMap, colorsMap, modelsMap, configsMap, fixedMap, uiMap, titleTrans] = await Promise.all([
+            translateBatch(allBrands, targetLang),
+            translateBatch(allEnergies, targetLang),
+            translateBatch(allColors, targetLang),
+            translateBatch(allModels, targetLang),
+            translateBatch(allConfigs, targetLang),
+            translateBatch(fixedEnergies, targetLang),
+            translateBatch(["品牌", "价格 (CNY)", "公里数", "动力类型", "重置", "没有找到符合条件的车辆", "全部", "邮箱", "电话", "📞 联系我们", "数据更新于", "颜色", "EXW", "FOB", "微信", "暂无图片", "联系询价"], targetLang),
+            translateText("AutoChina Export", targetLang)
+        ]);
+        
+        const translatedData = {
+            brandsMap, energiesMap, colorsMap, modelsMap, configsMap, fixedMap, title: titleTrans,
+            ui: {
+                brand: uiMap["品牌"], price: uiMap["价格 (CNY)"], mileage: uiMap["公里数"], energy: uiMap["动力类型"],
+                reset: uiMap["重置"], noCars: uiMap["没有找到符合条件的车辆"], all: uiMap["全部"],
+                email: uiMap["邮箱"], phone: uiMap["电话"], contactUs: uiMap["📞 联系我们"],
+                updatePrefix: uiMap["数据更新于"], color: uiMap["颜色"], exw: uiMap["EXW"], fob: uiMap["FOB"],
+                wechat: uiMap["微信"], noImage: uiMap["暂无图片"], contactPrice: uiMap["联系询价"]
+            }
+        };
+        translationCache[cacheKey] = translatedData;
+        applyTranslatedUI(targetLang, translatedData);
+    } catch(e) {
+        console.error(e);
+        grid.innerHTML = originalHTML;
+        alert("翻译失败，请检查网络后重试");
+    }
+}
+
+function applyTranslatedUI(targetLang, data) {
+    const t = data.ui;
+    document.title = data.title;
+    document.getElementById("label-brand").innerText = t.brand;
+    document.getElementById("label-price").innerText = t.price;
+    document.getElementById("label-mileage").innerText = t.mileage;
+    document.getElementById("label-energy").innerText = t.energy;
+    document.getElementById("resetFilters").innerText = t.reset;
+    document.getElementById("filterPrice").options[0].text = t.all;
+    document.getElementById("filterMileage").options[0].text = t.all;
+    
+    const energySelect = document.getElementById("filterEnergy");
+    energySelect.innerHTML = `<option value="all">${t.all}</option>
+        <option value="汽油">${data.fixedMap["汽油"]}</option>
+        <option value="柴油">${data.fixedMap["柴油"]}</option>
+        <option value="电动">${data.fixedMap["电动"]}</option>
+        <option value="混动">${data.fixedMap["混动"]}</option>`;
+    if (currentFilter.energyType !== "all") energySelect.value = currentFilter.energyType;
+    
+    const brands = [...new Set(allCars.map(c => c.brandCh))];
+    const brandSelect = document.getElementById("filterBrand");
+    let opts = `<option value="all">${t.all}</option>`;
+    brands.forEach(b => { opts += `<option value="${b}">${data.brandsMap[b] || b}</option>`; });
+    brandSelect.innerHTML = opts;
+    if (currentFilter.brand !== "all") brandSelect.value = currentFilter.brand;
+    
+    document.getElementById("contactTitle").innerText = t.contactUs;
+    document.getElementById("homeContactButtons").innerHTML = `
+        <a href="mailto:${CONTACT.email}" class="home-contact-btn home-mail"><i class="fas fa-envelope"></i> ${t.email}</a>
+        <a href="tel:${CONTACT.phone}" class="home-contact-btn home-tel"><i class="fas fa-phone-alt"></i> ${t.phone}</a>
+        <a href="https://wa.me/${CONTACT.whatsapp}" target="_blank" class="home-contact-btn home-wa"><i class="fab fa-whatsapp"></i> WhatsApp</a>
+        <button class="home-contact-btn home-wechat" id="homeWechatBtn"><i class="fab fa-weixin"></i> ${t.wechat}: ${CONTACT.wechat}</button>
+    `;
+    document.getElementById("homeWechatBtn")?.addEventListener('click', () => {
+        navigator.clipboard.writeText(CONTACT.wechat);
+        alert(`${t.wechat}: ${CONTACT.wechat} copied`);
+    });
+    
+    document.getElementById("updateDate").innerText = `${t.updatePrefix} ${getYesterdayDate(targetLang)}`;
+    renderCars_Translated(data);
+}
+
+function renderCars_Translated(data) {
+    let filtered = allCars.filter(c=>{
+        if(currentFilter.brand!=="all" && c.brandCh!==currentFilter.brand) return false;
+        let price = (c.exwCNY!==null?c.exwCNY:(c.fobCNY!==null?c.fobCNY:0));
+        if(currentFilter.priceRange!=="all"){ let [min,max]=currentFilter.priceRange.split("-").map(Number); if(price<min||price>max) return false; }
+        if(currentFilter.mileageRange!=="all"){ let [min,max]=currentFilter.mileageRange.split("-").map(Number); if(c.km<min||c.km>max) return false; }
+        if(currentFilter.energyType!=="all" && c.energyCh!==currentFilter.energyType) return false;
+        return true;
+    });
+    const grid = document.getElementById("carsGrid");
+    if(!filtered.length){ grid.innerHTML = `<div class="no-results">${data.ui.noCars}</div>`; return; }
+    grid.innerHTML = filtered.map(c=>{
+        let price = c.exwCNY!==null ? `${c.exwCNY.toLocaleString()} ¥` : (c.fobCNY!==null ? `${c.fobCNY.toLocaleString()} ¥` : data.ui.contactPrice);
+        const brandTrans = data.brandsMap[c.brandCh] || c.brandCh;
+        const modelTrans = data.modelsMap[c.model] || c.model;
+        const configTrans = data.configsMap[c.config] || c.config;
         const titleParts = [brandTrans, modelTrans];
         if (configTrans && configTrans !== c.config) titleParts.push(configTrans);
         const titleText = titleParts.join(' ');
+        const energyTrans = data.energiesMap[c.energyCh] || c.energyCh;
+        const colorTrans = (c.colorCh === "-" ? "-" : (data.colorsMap[c.colorCh] || c.colorCh));
         return `<div class="car-card" data-id="${c.id}">
             <div class="car-image-area">${c.imgs[0]?`<img src="${c.imgs[0]}" onerror="this.parentElement.innerHTML='<i class=\'fas fa-car\'></i>'">`:'<i class="fas fa-car"></i>'}</div>
             <div class="car-info">
                 <div class="car-title">${titleText}</div>
-                <div><span class="badge">${tEnergy(c.energyCh)}</span> <span>${c.km.toLocaleString()} km</span></div>
+                <div><span class="badge">${energyTrans}</span> <span>${c.km.toLocaleString()} km</span></div>
                 <div class="car-price">💰 ${price}</div>
-                <div>🎨 ${tColor(c.colorCh)}</div>
+                <div>🎨 ${colorTrans}</div>
             </div>
         </div>`;
     }).join('');
-    document.querySelectorAll('.car-card').forEach(card=>card.addEventListener('click',()=>showDetail(parseInt(card.dataset.id))));
+    document.querySelectorAll('.car-card').forEach(card=>card.addEventListener('click',()=>showDetail_Translated(parseInt(card.dataset.id), data)));
 }
 
-function showDetail(id){
+function showDetail_Translated(id, data){
     let c = allCars.find(x=>x.id===id);
     if(!c) return;
-    let t = uiText[currentLang];
-    const brandTrans = tBrand(c.brandCh);
-    const modelTrans = tModel(c.model);
-    const configTrans = tConfig(c.config);
+    const brandTrans = data.brandsMap[c.brandCh] || c.brandCh;
+    const modelTrans = data.modelsMap[c.model] || c.model;
+    const configTrans = data.configsMap[c.config] || c.config;
     const titleParts = [brandTrans, modelTrans];
     if (configTrans && configTrans !== c.config) titleParts.push(configTrans);
-    const titleText = titleParts.join(' ');
-    document.getElementById("modalTitle").innerHTML = titleText;
+    document.getElementById("modalTitle").innerHTML = titleParts.join(' ');
     let exwD = c.exwCNY!==null ? `${c.exwCNY.toLocaleString()} ¥` : "-";
     let fobD = c.fobCNY!==null ? `${c.fobCNY.toLocaleString()} ¥` : "-";
+    const energyTrans = data.energiesMap[c.energyCh] || c.energyCh;
+    const colorTrans = (c.colorCh === "-" ? "-" : (data.colorsMap[c.colorCh] || c.colorCh));
     document.getElementById("modalDetails").innerHTML = `
-        <div class="detail-field"><strong>${t.color}:</strong> ${tColor(c.colorCh)}</div>
-        <div class="detail-field"><strong>${t.mileage}:</strong> ${c.km.toLocaleString()} km</div>
-        <div class="detail-field"><strong>${t.energy}:</strong> ${tEnergy(c.energyCh)}</div>
-        <div class="detail-field"><strong>${t.exw}:</strong> ${exwD}</div>
-        <div class="detail-field"><strong>${t.fob}:</strong> ${fobD}</div>
+        <div class="detail-field"><strong>${data.ui.color}:</strong> ${colorTrans}</div>
+        <div class="detail-field"><strong>${data.ui.mileage}:</strong> ${c.km.toLocaleString()} km</div>
+        <div class="detail-field"><strong>${data.ui.energy}:</strong> ${energyTrans}</div>
+        <div class="detail-field"><strong>${data.ui.exw}:</strong> ${exwD}</div>
+        <div class="detail-field"><strong>${data.ui.fob}:</strong> ${fobD}</div>
     `;
     const wrapper = document.getElementById("swiperWrapper");
-    wrapper.innerHTML = c.imgs.length ? c.imgs.map(u=>`<div class="swiper-slide"><img src="${u}"></div>`).join('') : `<div class="swiper-slide"><div style="height:300px;display:flex;align-items:center;justify-content:center;">No images</div></div>`;
+    wrapper.innerHTML = c.imgs.length ? c.imgs.map(u=>`<div class="swiper-slide"><img src="${u}"></div>`).join('') : `<div class="swiper-slide"><div style="height:300px;display:flex;align-items:center;justify-content:center;">${data.ui.noImage}</div></div>`;
     if(swiperInstance) swiperInstance.destroy(true,true);
     swiperInstance = new Swiper('#detailSwiper', { navigation: { nextEl:'.swiper-button-next', prevEl:'.swiper-button-prev' }, loop: c.imgs.length>1 });
     document.getElementById("contactButtons").innerHTML = `
-        <a href="mailto:${CONTACT.email}" class="contact-btn contact-mail"><i class="fas fa-envelope"></i> ${t.email}</a>
-        <a href="tel:${CONTACT.phone}" class="contact-btn contact-tel"><i class="fas fa-phone-alt"></i> ${t.phone}</a>
-        <a href="https://wa.me/${CONTACT.whatsapp}" target="_blank" class="contact-btn contact-wa"><i class="fab fa-whatsapp"></i> ${t.wa}</a>
-        <button class="contact-btn contact-wechat" id="wcCopy"><i class="fab fa-weixin"></i> ${t.wc}: ${CONTACT.wechat}</button>
+        <a href="mailto:${CONTACT.email}" class="contact-btn contact-mail"><i class="fas fa-envelope"></i> ${data.ui.email}</a>
+        <a href="tel:${CONTACT.phone}" class="contact-btn contact-tel"><i class="fas fa-phone-alt"></i> ${data.ui.phone}</a>
+        <a href="https://wa.me/${CONTACT.whatsapp}" target="_blank" class="contact-btn contact-wa"><i class="fab fa-whatsapp"></i> WhatsApp</a>
+        <button class="contact-btn contact-wechat" id="wcCopy"><i class="fab fa-weixin"></i> ${data.ui.wechat}: ${CONTACT.wechat}</button>
     `;
-    document.getElementById("wcCopy")?.addEventListener('click',()=>{ navigator.clipboard.writeText(CONTACT.wechat); alert(`${t.wc}: ${CONTACT.wechat} copied`); });
+    document.getElementById("wcCopy")?.addEventListener('click',()=>{ navigator.clipboard.writeText(CONTACT.wechat); alert(`${data.ui.wechat}: ${CONTACT.wechat} copied`); });
     document.getElementById("detailModal").style.display = "flex";
 }
 
@@ -367,7 +438,8 @@ function applyFilters(){
         mileageRange: document.getElementById("filterMileage").value,
         energyType: document.getElementById("filterEnergy").value
     };
-    renderCars();
+    if (currentLang === "zh") renderCars_ZH();
+    else { const cached = translationCache[`full_${currentLang}`]; if (cached) renderCars_Translated(cached); else translateToLang(currentLang); }
 }
 function resetFilters(){
     document.getElementById("filterBrand").value = "all";
@@ -376,13 +448,15 @@ function resetFilters(){
     document.getElementById("filterEnergy").value = "all";
     applyFilters();
 }
-function setLang(lang){
-    currentLang = lang;
-    document.querySelectorAll('.lang-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.lang===lang));
-    updateLoadingText();
-    if (dataLoaded) {
-        refreshUI();
+async function setLang(lang){
+    if (lang === "zh") {
+        currentLang = "zh";
+        renderUI_ZH();
+    } else {
+        currentLang = lang;
+        await translateToLang(lang);
     }
+    document.querySelectorAll('.lang-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.lang===lang));
 }
 
 document.addEventListener("DOMContentLoaded",()=>{
@@ -395,7 +469,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     document.querySelector(".close-modal").onclick = ()=>document.getElementById("detailModal").style.display="none";
     window.onclick = (e)=>{ if(e.target===document.getElementById("detailModal")) document.getElementById("detailModal").style.display="none"; };
     document.querySelectorAll('.lang-btn').forEach(btn=>btn.addEventListener('click',()=>setLang(btn.dataset.lang)));
-    setLang('en');
+    setLang('zh');
 });
 </script>
 </body>
