@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+    <title>国际车源库 | AutoChina Export</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Swiper 图片轮播库 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, 'Segoe UI', sans-serif; }
+        body { background: #f4f7fc; padding: 20px; }
+        .container { max-width: 1300px; margin: 0 auto; background: white; border-radius: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); overflow: hidden; padding: 20px 24px 40px; }
+        .lang-bar { display: flex; justify-content: flex-end; gap: 12px; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; }
+        .lang-btn { background: none; border: 1px solid #cbd5e1; padding: 8px 18px; border-radius: 40px; font-weight: 600; cursor: pointer; background: white; color: #2c3e66; transition: 0.2s; }
+        .lang-btn.active { background: #1e4a76; border-color: #1e4a76; color: white; }
+        .filter-section { background: #f8fafc; border-radius: 24px; padding: 18px 20px; margin-bottom: 32px; display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; }
+        .filter-group { flex: 1 1 150px; min-width: 120px; }
+        .filter-group label { display: block; font-size: 0.7rem; text-transform: uppercase; font-weight: 600; color: #4a5b6e; margin-bottom: 5px; }
+        .filter-group select { width: 100%; padding: 10px; border-radius: 16px; border: 1px solid #cbd5e1; background: white; font-size: 0.9rem; }
+        .reset-btn { background: #eef2f6; border: none; padding: 10px 20px; border-radius: 30px; font-weight: 600; cursor: pointer; margin-top: 22px; }
+        .cars-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; margin: 25px 0 30px; }
+        .car-card { background: white; border-radius: 24px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; border: 1px solid #eef2f8; cursor: pointer; }
+        .car-card:hover { transform: translateY(-4px); box-shadow: 0 15px 30px rgba(0,0,0,0.1); }
+        .car-image-area { height: 180px; background: #e2e8f0; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 2rem; overflow: hidden; }
+        .car-image-area img { width: 100%; height: 100%; object-fit: cover; }
+        .car-info { padding: 18px; }
+        .car-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .car-price { font-weight: 800; color: #0f3b5c; font-size: 1.1rem; margin-top: 8px; }
+        .badge { background: #eef2ff; padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; display: inline-block; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(3px); }
+        .modal-content { background: white; max-width: 600px; width: 90%; border-radius: 28px; padding: 20px; position: relative; max-height: 90vh; overflow-y: auto; }
+        .close-modal { position: absolute; top: 12px; right: 18px; font-size: 28px; cursor: pointer; z-index: 10; }
+        .swiper { width: 100%; height: 300px; border-radius: 16px; margin-bottom: 16px; }
+        .swiper-slide img { width: 100%; height: 100%; object-fit: contain; background: #f1f5f9; }
+        .detail-field { margin: 12px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
+        .contact-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+        .contact-btn { flex: 1; text-align: center; padding: 10px; border-radius: 40px; text-decoration: none; font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: #f1f5f9; color: #1e293b; cursor: pointer; border: none; }
+        .contact-mail { background: #e0f2fe; color: #0369a1; }
+        .contact-wa { background: #dcfce7; color: #15803d; }
+        .contact-wechat { background: #e0e7ff; color: #1e3a8a; }
+        .contact-tel { background: #fff1f0; color: #b91c1c; }
+        .no-results, .loading-spinner { text-align: center; padding: 50px; color: #5b6e8c; }
+        @media (max-width: 650px) { .cars-grid { grid-template-columns: 1fr; } .swiper { height: 220px; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="lang-bar">
+        <button class="lang-btn" data-lang="english">🇬🇧 English</button>
+        <button class="lang-btn" data-lang="french">🇫🇷 Français</button>
+        <button class="lang-btn" data-lang="arabic">🇸🇦 العربية</button>
+    </div>
+    <div class="filter-section">
+        <div class="filter-group"><label id="label-brand">品牌</label><select id="filterBrand"></select></div>
+        <div class="filter-group"><label id="label-price">价格区间</label><select id="filterPrice"><option value="all">全部</option><option value="0-50000">€0 - €5万</option><option value="50000-100000">€5万-€10万</option><option value="100000-200000">€10万-€20万</option><option value="200000-9999999">€20万+</option></select></div>
+        <div class="filter-group"><label id="label-mileage">公里数</label><select id="filterMileage"><option value="all">全部</option><option value="0-10000">0-1万km</option><option value="10000-30000">1万-3万km</option><option value="30000-60000">3万-6万km</option><option value="60000-999999">6万km+</option></select></div>
+        <div class="filter-group"><label id="label-energy">动力类型</label><select id="filterEnergy"><option value="all">全部</option><option value="汽油">汽油</option><option value="柴油">柴油</option><option value="电动">电动</option><option value="混动">混动</option></select></div>
+        <div><button class="reset-btn" id="resetFilters">⟳ 重置</button></div>
+    </div>
+    <div id="carsGrid" class="cars-grid"><div class="loading-spinner"><i class="fas fa-spinner fa-pulse"></i> 加载车源中...</div></div>
+</div>
+<div id="detailModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div class="swiper" id="detailSwiper"><div class="swiper-wrapper" id="swiperWrapper"></div><div class="swiper-button-next"></div><div class="swiper-button-prev"></div></div><h2 id="modalTitle"></h2><div id="modalDetails"></div><div class="contact-buttons" id="contactButtons"></div></div></div>
+<script>
+    // ================== 配置区 ==================
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/1kDLWwwoVZgE6y7hYuZo7_KQfNauR3yUVuMJGXKGO7J0/export?format=csv";
+    // 联系方式（您已授权直接填入）
+    const CONTACT = {
+        email: "shengunju@gmail.com",
+        phone: "+8615589681341",
+        whatsapp: "19059231202",      // 纯数字，网页点击直接跳转
+        wechat: "AutoChinaExport"
+    };
+    // ===========================================
+    let currentLang = "english";
+    let allCars = [];
+    let currentFilter = { brand: "all", priceRange: "all", mileageRange: "all", energyType: "all" };
+    let swiperInstance = null;
+
+    const translations = {
+        english: { brand: "Brand", price: "Price (EUR)", mileage: "Mileage (km)", energy: "Powertrain", reset: "Reset", noCars: "No vehicles found.", contactEmail: "Email", contactPhone: "Call", contactWhatsapp: "WhatsApp", contactWechat: "WeChat", priceLabel: "Price", mileageLabel: "Mileage", energyLabel: "Powertrain", colorLabel: "Color", modelLabel: "Model", configLabel: "Trim", guidePrice: "MSRP", exw: "EXW", fob: "FOB" },
+        french: { brand: "Marque", price: "Prix (EUR)", mileage: "Kilométrage", energy: "Énergie", reset: "Réinitialiser", noCars: "Aucun véhicule.", contactEmail: "E-mail", contactPhone: "Appeler", contactWhatsapp: "WhatsApp", contactWechat: "WeChat", priceLabel: "Prix", mileageLabel: "Km", energyLabel: "Énergie", colorLabel: "Couleur", modelLabel: "Modèle", configLabel: "Finition", guidePrice: "Prix conseillé", exw: "EXW", fob: "FOB" },
+        arabic: { brand: "العلامة", price: "السعر (يورو)", mileage: "الكيلومترات", energy: "نوع الوقود", reset: "إعادة تعيين", noCars: "لا توجد سيارات", contactEmail: "بريد", contactPhone: "اتصال", contactWhatsapp: "واتساب", contactWechat: "ويشات", priceLabel: "السعر", mileageLabel: "كم", energyLabel: "الطاقة", colorLabel: "اللون", modelLabel: "الموديل", configLabel: "التجهيز", guidePrice: "السعر الموصى به", exw: "EXW", fob: "FOB" }
+    };
+
+    async function loadCars() {
+        try {
+            const res = await fetch(CSV_URL);
+            const text = await res.text();
+            const rows = parseCSV(text);
+            if (rows.length < 2) throw new Error("数据为空");
+            const headers = rows[0].map(h => h.trim());
+            const dataRows = rows.slice(1);
+            allCars = dataRows.map((row, idx) => {
+                const get = (colName) => { const i = headers.findIndex(h => h === colName); return i !== -1 ? (row[i] || "").trim() : ""; };
+                const images = [];
+                for (let i = 1; i <= 10; i++) {
+                    const url = get(`图片${i}`);
+                    if (url && (url.startsWith("http") || url.startsWith("https"))) images.push(url);
+                }
+                return {
+                    id: idx + Date.now(),
+                    品牌: get("品牌"), 类型: get("类型"), 产品型号: get("产品型号"), 配置类别: get("配置类别"), 颜色: get("颜色"),
+                    公里数: parseFloat(get("公里数")) || 0, 指导价: parseFloat(get("指导价")) || 0,
+                    EXW: get("EXW"), FOB: get("FOB"), 图片列表: images
+                };
+            }).filter(c => c.品牌 && c.产品型号);
+            populateBrands();
+            renderCars();
+        } catch(e) { console.error(e); document.getElementById("carsGrid").innerHTML = `<div class="no-results">⚠️ 加载失败，请检查网络或Sheet权限（需公开）。</div>`; }
+    }
+
+    function parseCSV(str) {
+        const rows = []; let row = [], field = "", inQuotes = false;
+        for (let i = 0; i < str.length; i++) {
+            const c = str[i], n = str[i+1];
+            if (inQuotes) { if (c === '"') { if (n === '"') { field += '"'; i++; } else inQuotes = false; } else field += c; }
+            else {
+                if (c === '"') inQuotes = true;
+                else if (c === ',') { row.push(field); field = ""; }
+                else if (c === '\n' || (c === '\r' && n === '\n')) { row.push(field); rows.push(row); row = []; field = ""; if (c === '\r') i++; }
+                else field += c;
+            }
+        }
+        if (field || row.length) { row.push(field); rows.push(row); }
+        return rows;
+    }
+
+    function populateBrands() {
+        const brands = [...new Set(allCars.map(c => c.品牌))];
+        const select = document.getElementById("filterBrand");
+        let allText = currentLang === 'arabic' ? 'الكل' : (currentLang === 'french' ? 'Tous' : 'All');
+        let opts = `<option value="all">${allText}</option>`;
+        brands.forEach(b => opts += `<option value="${b}">${b}</option>`);
+        select.innerHTML = opts;
+        if (currentFilter.brand !== "all") select.value = currentFilter.brand;
+    }
+
+    function renderCars() {
+        let filtered = allCars.filter(car => {
+            if (currentFilter.brand !== "all" && car.品牌 !== currentFilter.brand) return false;
+            if (currentFilter.priceRange !== "all") { const [min, max] = currentFilter.priceRange.split("-").map(Number); if (car.指导价 < min || car.指导价 > max) return false; }
+            if (currentFilter.mileageRange !== "all") { const [min, max] = currentFilter.mileageRange.split("-").map(Number); if (car.公里数 < min || car.公里数 > max) return false; }
+            if (currentFilter.energyType !== "all" && car.类型 !== currentFilter.energyType) return false;
+            return true;
+        });
+        const grid = document.getElementById("carsGrid");
+        if (!filtered.length) { grid.innerHTML = `<div class="no-results">${translations[currentLang].noCars}</div>`; return; }
+        grid.innerHTML = filtered.map(car => `
+            <div class="car-card" data-id="${car.id}">
+                <div class="car-image-area">${car.图片列表[0] ? `<img src="${car.图片列表[0]}" alt="${car.品牌} ${car.产品型号}" loading="lazy" onerror="this.parentElement.innerHTML='<i class=\'fas fa-car\'></i>'">` : `<i class="fas fa-car" style="font-size: 3rem;"></i>`}</div>
+                <div class="car-info">
+                    <div class="car-title">${escapeHtml(car.品牌)} ${escapeHtml(car.产品型号)} ${escapeHtml(car.配置类别)}</div>
+                    <div><span class="badge">${escapeHtml(car.类型 || '汽油')}</span> <span>${car.公里数.toLocaleString()} km</span></div>
+                    <div class="car-price">💰 ${car.指导价.toLocaleString()} €</div>
+                    <div>🎨 ${escapeHtml(car.颜色 || '-')}</div>
+                </div>
+            </div>
+        `).join('');
+        document.querySelectorAll('.car-card').forEach(card => card.addEventListener('click', () => showDetail(parseInt(card.dataset.id))));
+    }
+
+    function escapeHtml(str) { if(!str) return ''; return String(str).replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])); }
+
+    function showDetail(id) {
+        const car = allCars.find(c => c.id === id);
+        if (!car) return;
+        const t = translations[currentLang];
+        document.getElementById("modalTitle").innerHTML = `${escapeHtml(car.品牌)} ${escapeHtml(car.产品型号)} ${escapeHtml(car.配置类别)}`;
+        let details = `<div class="detail-field"><strong>${t.colorLabel}:</strong> ${escapeHtml(car.颜色 || '-')}</div>
+                       <div class="detail-field"><strong>${t.mileageLabel}:</strong> ${car.公里数.toLocaleString()} km</div>
+                       <div class="detail-field"><strong>${t.priceLabel}:</strong> ${car.指导价.toLocaleString()} €</div>
+                       <div class="detail-field"><strong>EXW:</strong> ${escapeHtml(car.EXW || '-')}</div>
+                       <div class="detail-field"><strong>FOB:</strong> ${escapeHtml(car.FOB || '-')}</div>`;
+        document.getElementById("modalDetails").innerHTML = details;
+        const wrapper = document.getElementById("swiperWrapper");
+        wrapper.innerHTML = car.图片列表.length ? car.图片列表.map(url => `<div class="swiper-slide"><img src="${url}" loading="lazy" onerror="this.src='https://placehold.co/600x400?text=Image+Error'"></div>`).join('') : `<div class="swiper-slide"><div style="height:300px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;"><i class="fas fa-image fa-4x"></i><p style="margin-left:10px;">暂无图片</p></div></div>`;
+        if (swiperInstance) swiperInstance.destroy(true, true);
+        swiperInstance = new Swiper('#detailSwiper', { navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' }, loop: car.图片列表.length > 1, spaceBetween: 10 });
+        
+        const contactDiv = document.getElementById("contactButtons");
+        contactDiv.innerHTML = `
+            <a href="mailto:${CONTACT.email}" class="contact-btn contact-mail"><i class="fas fa-envelope"></i> ${t.contactEmail}</a>
+            <a href="tel:${CONTACT.phone}" class="contact-btn contact-tel"><i class="fas fa-phone-alt"></i> ${t.contactPhone}</a>
+            <a href="https://wa.me/${CONTACT.whatsapp}" target="_blank" class="contact-btn contact-wa"><i class="fab fa-whatsapp"></i> ${t.contactWhatsapp}</a>
+            <button class="contact-btn contact-wechat" id="wechatCopyBtn"><i class="fab fa-weixin"></i> ${t.contactWechat}: ${CONTACT.wechat}</button>
+        `;
+        const wechatBtn = document.getElementById("wechatCopyBtn");
+        if (wechatBtn) wechatBtn.onclick = () => { navigator.clipboard.writeText(CONTACT.wechat); alert(`WeChat ID: ${CONTACT.wechat} copied`); };
+        document.getElementById("detailModal").style.display = "flex";
+    }
+
+    function applyFilters() {
+        currentFilter = {
+            brand: document.getElementById("filterBrand").value,
+            priceRange: document.getElementById("filterPrice").value,
+            mileageRange: document.getElementById("filterMileage").value,
+            energyType: document.getElementById("filterEnergy").value
+        };
+        renderCars();
+    }
+    function resetFilters() {
+        document.getElementById("filterBrand").value = "all";
+        document.getElementById("filterPrice").value = "all";
+        document.getElementById("filterMileage").value = "all";
+        document.getElementById("filterEnergy").value = "all";
+        applyFilters();
+    }
+    function setLang(lang) {
+        currentLang = lang;
+        document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.lang === lang));
+        const t = translations[lang];
+        document.getElementById("label-brand").innerText = t.brand;
+        document.getElementById("label-price").innerText = t.price;
+        document.getElementById("label-mileage").innerText = t.mileage;
+        document.getElementById("label-energy").innerText = t.energy;
+        document.getElementById("resetFilters").innerText = t.reset;
+        populateBrands(); renderCars();
+    }
+    document.addEventListener("DOMContentLoaded", () => {
+        loadCars();
+        document.getElementById("filterBrand").addEventListener("change", applyFilters);
+        document.getElementById("filterPrice").addEventListener("change", applyFilters);
+        document.getElementById("filterMileage").addEventListener("change", applyFilters);
+        document.getElementById("filterEnergy").addEventListener("change", applyFilters);
+        document.getElementById("resetFilters").addEventListener("click", resetFilters);
+        document.querySelector(".close-modal").onclick = () => document.getElementById("detailModal").style.display = "none";
+        window.onclick = (e) => { if (e.target === document.getElementById("detailModal")) document.getElementById("detailModal").style.display = "none"; };
+        document.querySelectorAll('.lang-btn').forEach(btn => btn.addEventListener('click', () => setLang(btn.dataset.lang)));
+        setLang('english');
+    });
+</script>
+</body>
+</html>
